@@ -1,0 +1,15 @@
+{
+  "name": "atp-entity",
+  "version": "1.0.0",
+  "description": " A module for consistently handling relational data entities via Redux.",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "npm test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git.repo.goes.here"
+  },
+  "author": "Andrew Wittrock",
+  "license": "MIT"
+}
