@@ -3,7 +3,11 @@
  */
 
 import entities from "./reducer/entities";
-import {updateEntity, updateEntities} from "./reducer/entities";
+import {
+    entityBoilerplate, relatedEntityBoilerplate,
+    updateEntity, updateEntities, updateEntityList,
+    getEntity, getEntityList, getEntitiesById, getAllEntities
+} from "./reducer/entities";
 
 export default {
     reducers: {
@@ -11,4 +15,8 @@ export default {
     }
 };
 
-export {updateEntity, updateEntities};
+export {
+    entityBoilerplate, relatedEntityBoilerplate,
+    updateEntity, updateEntities, updateEntityList,
+    getEntity, getEntityList, getEntitiesById, getAllEntities
+};
