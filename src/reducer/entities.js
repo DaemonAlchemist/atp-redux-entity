@@ -125,16 +125,16 @@ export const entityBoilerplate = (type, endPoint, idField = "id") => ({
             })
             .send(entity)
             .thunk(),
-        put: entity => rest()
-            .put(endPoint + "/" + entity.id)
+        put: (id, entity) => rest()
+            .put(endPoint + "/" + id)
             .then(([data, dispatch]) => {
                 dispatch(updateEntity(type, entity, idField));
                 dispatch(entityUpdated(type, entity, idField));
             })
             .send(entity)
             .thunk(),
-        patch: entity => rest()
-            .patch(endPoint + "/" + entity.id)
+        patch: (id, entity) => rest()
+            .patch(endPoint + "/" + id)
             .then(([data, dispatch]) => {
                 dispatch(updateEntity(type, entity, idField));
                 dispatch(entityUpdated(type, entity, idField));
