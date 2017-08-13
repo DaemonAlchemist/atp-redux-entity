@@ -26,7 +26,9 @@ const _updateEntities = (state, type, entities, idField) => entities.reduce(
     state
 );
 
-const _deleteEntity = (state, type, id, idField) => o(state).filter((obj, key) => key !== id).raw;
+const _deleteEntity = (state, type, id, idField) => o(state).merge({
+    [type]: o(state[type]).filter(obj => obj[idField] !== id).raw
+}, null).raw;
 
 const _getChangedEntityIdList = (getState, type, results, idField) => [].concat(
     //Get entities that have not already been loaded
@@ -111,41 +113,46 @@ export const entityBoilerplate = (type, endPoint, idField = "id") => ({
                 onIdLoad(dispatch, data.results.map(entity => entity[idField]));
             })
             .thunk(),
-        get: id => rest()
+        get: (id, callback = () => {}) => rest()
             .get(endPoint + "/" + id)
-            .then(([data, dispatch]) => {
+            .then(([data, dispatch, getState]) => {
                 dispatch(updateEntity(type, data.results, idField));
+                callback(data, dispatch, getState);
             })
             .thunk(),
-        post: entity => rest()
+        post: (entity, callback = () => {}) => rest()
             .post(endPoint)
-            .then(([data, dispatch]) => {
+            .then(([data, dispatch, getState]) => {
                 dispatch(updateEntity(type, entity, idField));
                 dispatch(entityUpdated(type, entity, idField));
+                callback(data, dispatch, getState);
             })
             .send(entity)
             .thunk(),
-        put: (id, entity) => rest()
+        put: (id, entity, callback = () => {}) => rest()
             .put(endPoint + "/" + id)
-            .then(([data, dispatch]) => {
+            .then(([data, dispatch, getState]) => {
                 dispatch(updateEntity(type, entity, idField));
                 dispatch(entityUpdated(type, entity, idField));
+                callback(data, dispatch, getState);
             })
             .send(entity)
             .thunk(),
-        patch: (id, entity) => rest()
+        patch: (id, entity, callback = () => {}) => rest()
             .patch(endPoint + "/" + id)
-            .then(([data, dispatch]) => {
+            .then(([data, dispatch, getState]) => {
                 dispatch(updateEntity(type, entity, idField));
                 dispatch(entityUpdated(type, entity, idField));
+                callback(data, dispatch, getState);
             })
             .send(entity)
             .thunk(),
-        delete: id => rest()
+        delete: (id, callback = () => {}) => rest()
             .delete(endPoint + "/" + id)
-            .then(dispatch => {
+            .then(([data, dispatch, getState]) => {
                 dispatch(deleteEntity(type, id, idField));
                 dispatch(entityDeleted(type, id, idField));
+                callback(data, dispatch, getState);
             })
             .thunk()
     }
