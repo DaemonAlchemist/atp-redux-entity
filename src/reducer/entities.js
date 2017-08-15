@@ -90,25 +90,31 @@ export const entityBoilerplate = (type, endPoint, idField = "id") => ({
         },
         update: entity => updateEntity(type, entity, idField),
         updateMultiple: entities => updateEntities(type, entities, idField),
-        list: ({filters = {}, onIdLoad = ids => {}, onEntityLoad = entities => {}}) => rest()
+        list: ({filters = {}, onIdLoad = ids => {}, onEntityLoad = entities => {}, directLoad = false}) => rest()
             .get(endPoint)
             //Just get id and version at first
-            .send(o(filters).merge({columns: "version," + idField}).raw)
+            .send(directLoad ? filters : o(filters).merge({columns: "version," + idField}).raw)
             .then(([data, dispatch, getState]) => {
-                const idsToUpdate = _getChangedEntityIdList(getState, type, data.results, idField);
-                if(idsToUpdate.length > 0) {
-                    dispatch(rest()
-                        .get(endPoint)
-                        .send(o(filters)
-                            .filter((_, key) => key === 'columns')
-                            .merge({[idField]: idsToUpdate.join(',')})
-                        )
-                        .then(([data, dispatch]) => {
-                            dispatch(updateEntities(type, data.results, idField));
-                            onEntityLoad(dispatch, data.results);
-                        })
-                        .thunk()
-                    );
+                //TODO:  Remove temp hack when all endpoints support ID filters
+                dispatch(updateEntities(type, data.results, idField));
+                onEntityLoad(dispatch, data.results);
+
+                if(!directLoad) {
+                    const idsToUpdate = _getChangedEntityIdList(getState, type, data.results, idField);
+                    if(idsToUpdate.length > 0) {
+                        dispatch(rest()
+                            .get(endPoint)
+                            .send(o(filters)
+                                .filter((_, key) => key === 'columns')
+                                .merge({[idField]: idsToUpdate.join(',')})
+                            )
+                            .then(([data, dispatch]) => {
+                                dispatch(updateEntities(type, data.results, idField));
+                                onEntityLoad(dispatch, data.results);
+                            })
+                            .thunk()
+                        );
+                    }
                 }
                 onIdLoad(dispatch, data.results.map(entity => entity[idField]));
             })
