@@ -30,15 +30,17 @@ const _deleteEntity = (state, type, id, idField) => o(state).merge({
     [type]: o(state[type]).filter(obj => obj[idField] !== id).raw
 }, null).raw;
 
-const _getChangedEntityIdList = (getState, type, results, idField) => [].concat(
-    //Get entities that have not already been loaded
-    a(results.map(entity => entity[idField])).difference(o(getState().entities[type]).keys).raw,
+const _getChangedEntityIdList = (getState, type, results, idField) => {
+    return [].concat(
+        //Get entities that have not already been loaded
+        a(results.map(entity => entity[idField])).difference(o(getState().entities[type]).keys()),
 
-    ///Get entities that have already been loaded, but have a higher version
-    results.filter(entity => o(getEntity(getState(), type, entity[idField])).as(existingEntity =>
-        typeof existingEntity !== 'undefined' && entity.version > existingEntity.version
-    )).map(entity => entity[idField])
-);  //Note:  No need to check for duplicates since these two lists are mutually exclusive
+        ///Get entities that have already been loaded, but have a higher version
+        results.filter(entity => o(getEntity(getState, type, entity[idField])).as(existingEntity =>
+            typeof existingEntity !== 'undefined' && entity.version > existingEntity.version
+        )).map(entity => entity[idField])
+    );
+}  //Note:  No need to check for duplicates since these two lists are mutually exclusive
 
 //Initial state
 const initialState = {
@@ -96,17 +98,18 @@ export const entityBoilerplate = (type, endPoint, idField = "id") => ({
             .send(directLoad ? filters : o(filters).merge({columns: "version," + idField}).raw)
             .then(([data, dispatch, getState]) => {
                 //TODO:  Remove temp hack when all endpoints support ID filters
-                dispatch(updateEntities(type, data.results, idField));
-                onEntityLoad(dispatch, data.results);
+                //dispatch(updateEntities(type, data.results, idField));
+                //onEntityLoad(dispatch, data.results);
 
                 if(!directLoad) {
                     const idsToUpdate = _getChangedEntityIdList(getState, type, data.results, idField);
+                    console.log(idsToUpdate);
                     if(idsToUpdate.length > 0) {
                         dispatch(rest()
                             .get(endPoint)
                             .send(o(filters)
                                 .filter((_, key) => key === 'columns')
-                                .merge({[idField]: idsToUpdate.join(',')})
+                                .merge({[idField]: idsToUpdate.join(',')}).raw
                             )
                             .then(([data, dispatch]) => {
                                 dispatch(updateEntities(type, data.results, idField));
