@@ -109,7 +109,7 @@ export const entityBoilerplate = (type, endPoint, idField = "id") => ({
                             .get(endPoint)
                             .send(o(filters)
                                 .filter((_, key) => key === 'columns')
-                                .merge({[idField]: idsToUpdate.join(',')}).raw
+                                .merge({[idField]: idsToUpdate}).raw
                             )
                             .then(([data, dispatch]) => {
                                 dispatch(updateEntities(type, data.results, idField));
