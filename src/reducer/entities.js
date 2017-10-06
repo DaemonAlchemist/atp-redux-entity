@@ -132,8 +132,8 @@ export const entityBoilerplate = (type, endPoint, idField = "id") => ({
         post: (entity, callback = () => {}) => rest()
             .post(endPoint)
             .then(([data, dispatch, getState]) => {
-                dispatch(updateEntity(type, entity, idField));
-                dispatch(entityUpdated(type, entity, idField));
+                dispatch(updateEntity(type, data.results, idField));
+                dispatch(entityUpdated(type, data.results, idField));
                 callback(data, dispatch, getState);
             })
             .send(entity)
