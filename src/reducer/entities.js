@@ -13,11 +13,11 @@ export const ENTITY_DELETED = "atp-entity/deleted";
 export const UPDATE_ENTITIES = "atp-entity/update-multiple";
 export const ENTITIES_UPDATED = "atp-entity/updated-multiple";
 
+const _getEntity = (state, type, id) => state[type] && state[type][id] ? state[type][id] : {};
+
 const _updateEntity = (state, type, entity, idField) => o(state).merge({
     [type]: {
-        [entity[idField]]: o(
-            state[type] && state[type][entity[idField]] ? state[type][entity[idField]] : {}
-        ).merge(entity, mergeFlags.NONE).raw
+        [entity[idField]]: o(_getEntity(state, type, entity[idField])).merge(entity, mergeFlags.NONE).raw
     }
 }, mergeFlags.RECURSIVE).raw;
 
@@ -56,8 +56,9 @@ export default (state = initialState, action) =>
     });
 
 //Selectors
+export const entityExists = (getState, type, id) => id && getState().entities[type] && getState().entities[type][id];
 export const getEntity = (getState, type, id) =>
-    id && getState().entities[type] && getState().entities[type][id]
+    entityExists(getState, type, id)
         ? getState().entities[type][id]
         : undefined;
 export const getAllEntities = (getState, type) => getState().entities[type] || {};
@@ -73,6 +74,28 @@ export const entitiesUpdated = (entityType, entities, idField) => ({type: ENTITI
 
 //Boilerplate
 export const entityBoilerplate = (type, endPoint, idField = "id") => ({
+    children: (childEndPoint, model) => ({
+        select: {
+            all: (getState, id) => entityExists(getState, type, id)
+                ? getEntity(getState, type, id)[childEndPoint] || []
+                : []
+        },
+        action: {
+            list: (id, filters) => rest()
+                .get(endPoint + "/" + id + "/" + childEndPoint)
+                .send(o(filters).delete('columns').raw)
+                .then(([data, dispatch, getState]) => {
+                    dispatch(updateEntity(type, {
+                        [idField]: id,
+                        [childEndPoint]: data.results.map(child => child.id)
+                    }, idField));
+                    dispatch(model.action.collection.updateCache(data.results, filters.columns));
+                })
+                .thunk(),
+            post: (parentId, childId) => (dispatch, getState) => {},   //TODO:  Implement
+            delete: (parentId, childId) => (dispatch, getState) => {}, //TODO:  Implement
+        }
+    }),
     select: {
         one: (getState, id) => getEntity(getState, type, id),
         all:  (getState) => o(getAllEntities(getState, type)).values(),
@@ -90,46 +113,50 @@ export const entityBoilerplate = (type, endPoint, idField = "id") => ({
             updateMultiple: "atp-entity/update-multiple/" + type,
             updatedMultiple: "atp-entity/updated-multiple/" + type
         },
-        update: entity => updateEntity(type, entity, idField),
-        updateMultiple: entities => updateEntities(type, entities, idField),
-        list: ({filters = {}, onIdLoad = ids => {}, onEntityLoad = entities => {}, directLoad = false}) => rest()
-            .get(endPoint)
-            //Just get id and version at first
-            .send(directLoad ? filters : o(filters).merge({columns: "version," + idField}).raw)
-            .then(([data, dispatch, getState]) => {
-                //TODO:  Remove temp hack when all endpoints support ID filters
-                //dispatch(updateEntities(type, data.results, idField));
-                //onEntityLoad(dispatch, data.results);
-
-                if(!directLoad) {
-                    const idsToUpdate = _getChangedEntityIdList(getState, type, data.results, idField);
-                    console.log(idsToUpdate);
-                    if(idsToUpdate.length > 0) {
-                        dispatch(rest()
-                            .get(endPoint)
-                            .send(o(filters)
-                                .filter((_, key) => key === 'columns')
-                                .merge({[idField]: idsToUpdate}).raw
-                            )
-                            .then(([data, dispatch]) => {
-                                dispatch(updateEntities(type, data.results, idField));
-                                onEntityLoad(dispatch, data.results);
-                            })
-                            .thunk()
-                        );
-                    }
+        save: {
+            single: entity => updateEntity(type, entity, idField),
+            multiple: entities => updateEntities(type, entities, idField)
+        },
+        collection: {
+            updateCache: (ids, columns = null) => (dispatch, getState) => {
+                const idsToUpdate = _getChangedEntityIdList(getState, type, ids, idField);
+                if(idsToUpdate.length > 0) {
+                    dispatch(rest()
+                        .get(endPoint)
+                        .send(columns ? {columns} : {})
+                        .then(([data, dispatch]) => {
+                            dispatch(updateEntities(type, data.results, idField));
+                            onEntityLoad(dispatch, data.results);
+                        })
+                        .thunk()
+                    );
                 }
-                onIdLoad(dispatch, data.results.map(entity => entity[idField]));
-            })
-            .thunk(),
-        get: (id, callback = () => {}) => rest()
+            },
+            getVersions: (filters = {}) => rest()
+                .get(endPoint)
+                .send(o(filters).merge({
+                    columns: ['id', 'version'].join(',')
+                }).raw)
+                .then(([data, dispatch, getState]) => {
+                    dispatch(updateEntities(type, data.results, idField));
+                })
+                .thunk(),
+            get: (filters = {}) => rest()
+                .get(endPoint)
+                .send(filters)
+                .then(([data, dispatch, getState]) => {
+                    dispatch(updateEntities(type, data.results, idField));
+                })
+                .thunk(),
+        },
+        fetch: (id, callback = () => {}) => rest()
             .get(endPoint + "/" + id)
             .then(([data, dispatch, getState]) => {
                 dispatch(updateEntity(type, data.results, idField));
                 callback(data, dispatch, getState);
             })
             .thunk(),
-        post: (entity, callback = () => {}) => rest()
+        create: (entity, callback = () => {}) => rest()
             .post(endPoint)
             .then(([data, dispatch, getState]) => {
                 dispatch(updateEntity(type, data.results, idField));
@@ -138,7 +165,7 @@ export const entityBoilerplate = (type, endPoint, idField = "id") => ({
             })
             .send(entity)
             .thunk(),
-        put: (id, entity, callback = () => {}) => rest()
+        replace: (id, entity, callback = () => {}) => rest()
             .put(endPoint + "/" + id)
             .then(([data, dispatch, getState]) => {
                 dispatch(updateEntity(type, entity, idField));
@@ -147,7 +174,7 @@ export const entityBoilerplate = (type, endPoint, idField = "id") => ({
             })
             .send(entity)
             .thunk(),
-        patch: (id, entity, callback = () => {}) => rest()
+        update: (id, entity, callback = () => {}) => rest()
             .patch(endPoint + "/" + id)
             .then(([data, dispatch, getState]) => {
                 dispatch(updateEntity(type, entity, idField));
