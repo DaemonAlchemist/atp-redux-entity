@@ -8,8 +8,13 @@ import rest from "atp-rest";
 
 export const UPDATE_ENTITY = "atp-entity/update";
 export const ENTITY_UPDATED = "atp-entity/updated";
+
+export const ADD_CHILD = "atp-entity/addChild";
+export const REMOVE_CHILD = "atp-entity/removeChild";
+
 export const DELETE_ENTITY = "atp-entity/delete";
 export const ENTITY_DELETED = "atp-entity/deleted";
+
 export const UPDATE_ENTITIES = "atp-entity/update-multiple";
 export const ENTITIES_UPDATED = "atp-entity/updated-multiple";
 
@@ -20,6 +25,10 @@ const _updateEntity = (state, type, entity, idField) => o(state).merge({
         [entity[idField]]: o(_getEntity(state, type, entity[idField])).merge(entity, mergeFlags.NONE).raw
     }
 }, mergeFlags.RECURSIVE).raw;
+
+const _addChild = (state, entityType, entityId, childType, childId) => state;
+
+const _removeChild = (state, entityType, entityId, childType, childId) => state;
 
 const _updateEntities = (state, type, entities, idField) => entities.reduce(
     (combined, entity) => _updateEntity(combined, type, entity, idField),
@@ -50,6 +59,8 @@ const initialState = {
 export default (state = initialState, action) =>
     o(action.type).switch({
         [UPDATE_ENTITY]:      () => _updateEntity(state, action.entityType, action.entity, action.idField),
+        [ADD_CHILD]:          () => _addChild(state, action.entityType, action.entityId, action.childType, action.childId),
+        [REMOVE_CHILD]:       () => _removeChild(state, action.entityType, action.entityId, action.childType, action.childId),
         [DELETE_ENTITY]:      () => _deleteEntity(state, action.entityType, action.id, action.idField),
         [UPDATE_ENTITIES]:    () => _updateEntities(state, action.entityType, action.entities, action.idField),
         default: () => state
@@ -67,35 +78,54 @@ export const getEntitiesById = (getState, type, idList) => idList.map(id => getE
 //Action creators
 export const updateEntity = (entityType, entity, idField) => ({type: UPDATE_ENTITY, entityType, idField, entity});
 export const entityUpdated = (entityType, entity, idField) => ({type: ENTITY_UPDATED, entityType, idField, entity});
+
+export const addChild = (entityType, entityId, childType, childId) => ({type: ADD_CHILD, entityType, entityId, childType, childId});
+export const removeChild = (entityType, entityId, childType, childId) => ({type: REMOVE_CHILD, entityType, entityId, childType, childId});
+
 export const deleteEntity = (entityType, id, idField) => ({type: DELETE_ENTITY, entityType, id, idField});
 export const entityDeleted = (entityType, id, idField) => ({type: ENTITY_DELETED, entityType, id, idField});
+
 export const updateEntities = (entityType, entities, idField) => ({type: UPDATE_ENTITIES, entityType, idField, entities});
 export const entitiesUpdated = (entityType, entities, idField) => ({type: ENTITIES_UPDATED, entityType, idField, entities});
 
 //Boilerplate
 export const entityBoilerplate = (type, endPoint, idField = "id") => ({
-    children: (childEndPoint, model) => ({
-        select: {
-            all: (getState, id) => entityExists(getState, type, id)
-                ? getEntity(getState, type, id)[childEndPoint] || []
-                : []
-        },
-        action: {
-            list: (id, filters) => rest()
-                .get(endPoint + "/" + id + "/" + childEndPoint)
-                .send(o(filters).delete('columns').raw)
-                .then(([data, dispatch, getState]) => {
-                    dispatch(updateEntity(type, {
-                        [idField]: id,
-                        [childEndPoint]: data.results.map(child => child.id)
-                    }, idField));
-                    dispatch(model.action.collection.updateCache(data.results, filters.columns));
-                })
-                .thunk(),
-            post: (parentId, childId) => (dispatch, getState) => {},   //TODO:  Implement
-            delete: (parentId, childId) => (dispatch, getState) => {}, //TODO:  Implement
+    children: (childEndPoint, model) => {
+        const childrenUrl = id => endPoint + "/" + id + "/" + childEndPoint;
+        return {
+            select: {
+                all: (getState, id) => entityExists(getState, type, id)
+                    ? getEntity(getState, type, id)[childEndPoint] || []
+                    : []
+            },
+            action: {
+                list: (id, filters) => rest()
+                    .get(childrenUrl(id))
+                    .send(o(filters).delete('columns').raw)
+                    .then(([data, dispatch, getState]) => {
+                        dispatch(updateEntity(type, {
+                            [idField]: id,
+                            [childEndPoint]: data.results.map(child => child.id)
+                        }, idField));
+                        dispatch(model.action.collection.updateCache(data.results, filters.columns));
+                    })
+                    .thunk(),
+                post: (parentId, childId) => rest()
+                    .post(childrenUrl(parentId))
+                    .send({[childEndPoint + "Id"]: childId})
+                    .then(([data, dispatch, getState]) => {
+                        dispatch(addChild(type, parentId, childEndPoint, childId));
+                    })
+                    .thunk(),
+                delete: (parentId, childId) => rest()
+                    .delete(childrenUrl(parentId) + "/" + childId)
+                    .then(([data, dispatch, getState]) => {
+                        dispatch(removeChild(type, parentId, childEndPoint, childId));
+                    })
+                    .thunk()
+            }
         }
-    }),
+    },
     select: {
         one: (getState, id) => getEntity(getState, type, id),
         all:  (getState) => o(getAllEntities(getState, type)).values(),
