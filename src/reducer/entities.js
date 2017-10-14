@@ -26,7 +26,13 @@ const _updateEntity = (state, type, entity, idField) => o(state).merge({
     }
 }, mergeFlags.RECURSIVE).raw;
 
-const _addChild = (state, entityType, entityId, childType, childId) => state;
+const _addChild = (state, entityType, entityId, childType, childId) => o(state).merge({
+    [entityType]: {
+        [entityId]: o(_getEntity(state, entityType, entityId)).as(entity => o(entity).merge({
+            [childType]: entity[childType].concat(childId)
+        }, mergeFlags.NONE)).raw
+    }
+}, mergeFlags.RECURSIVE).raw;
 
 const _removeChild = (state, entityType, entityId, childType, childId) => state;
 
