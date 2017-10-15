@@ -11,5 +11,8 @@
     "url": "git.repo.goes.here"
   },
   "author": "Andrew Wittrock",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "atp-pointfree": "^0.1.0"
+  }
 }
