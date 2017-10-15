@@ -5,6 +5,7 @@
 import {mergeFlags} from "atp-sugar";
 import {o, a, mergeFlags} from "atp-sugar";
 import rest from "atp-rest";
+import {notEqual} from 'atp-pointfree';
 
 export const UPDATE_ENTITY = "atp-entity/update";
 export const ENTITY_UPDATED = "atp-entity/updated";
@@ -34,7 +35,13 @@ const _addChild = (state, entityType, entityId, childType, childId) => o(state).
     }
 }, mergeFlags.RECURSIVE).raw;
 
-const _removeChild = (state, entityType, entityId, childType, childId) => state;
+const _removeChild = (state, entityType, entityId, childType, childId) => o(state).merge({
+    [entityType]: {
+        [entityId]: o(_getEntity(state, entityType, entityId)).as(entity => o(entity).merge({
+            [childType]: entity[childType].filter(notEqual(childId))
+        }, mergeFlags.NONE)).raw
+    }
+}, mergeFlags.RECURSIVE).raw;
 
 const _updateEntities = (state, type, entities, idField) => entities.reduce(
     (combined, entity) => _updateEntity(combined, type, entity, idField),
