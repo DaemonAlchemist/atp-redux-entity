@@ -120,7 +120,7 @@ export const entityBoilerplate = (type, endPoint, idField = "id") => ({
                             [idField]: id,
                             [childEndPoint]: data.results.map(child => child.id)
                         }, idField));
-                        dispatch(model.action.collection.updateCache(data.results, filters.columns));
+                        dispatch(model().action.collection.updateCache(data.results, filters.columns));
                     })
                     .thunk(),
                 post: (parentId, childId) => rest()
