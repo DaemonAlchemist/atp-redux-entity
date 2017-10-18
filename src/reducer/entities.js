@@ -30,7 +30,7 @@ const _updateEntity = (state, type, entity, idField) => o(state).merge({
 const _addChild = (state, entityType, entityId, childType, childId) => o(state).merge({
     [entityType]: {
         [entityId]: o(_getEntity(state, entityType, entityId)).as(entity => o(entity).merge({
-            [childType]: entity[childType].concat(childId)
+            [childType]: (entity[childType] || []).concat(childId)
         }, mergeFlags.NONE)).raw
     }
 }, mergeFlags.RECURSIVE).raw;
@@ -38,7 +38,7 @@ const _addChild = (state, entityType, entityId, childType, childId) => o(state).
 const _removeChild = (state, entityType, entityId, childType, childId) => o(state).merge({
     [entityType]: {
         [entityId]: o(_getEntity(state, entityType, entityId)).as(entity => o(entity).merge({
-            [childType]: entity[childType].filter(notEqual(childId))
+            [childType]: (entity[childType] || []).filter(notEqual(childId))
         }, mergeFlags.NONE)).raw
     }
 }, mergeFlags.RECURSIVE).raw;
