@@ -211,8 +211,8 @@ export const entityBoilerplate = (type, endPoint, idField = "id") => ({
         replace: (id, entity, callback = () => {}) => rest()
             .put(endPoint + "/" + id)
             .then(([data, dispatch, getState]) => {
-                dispatch(updateEntity(type, entity, idField));
-                dispatch(entityUpdated(type, entity, idField));
+                dispatch(updateEntity(type, data.results, idField));
+                dispatch(entityUpdated(type, data.results, idField));
                 callback(data, dispatch, getState);
             })
             .send(entity)
@@ -220,8 +220,8 @@ export const entityBoilerplate = (type, endPoint, idField = "id") => ({
         update: (id, entity, callback = () => {}) => rest()
             .patch(endPoint + "/" + id)
             .then(([data, dispatch, getState]) => {
-                dispatch(updateEntity(type, entity, idField));
-                dispatch(entityUpdated(type, entity, idField));
+                dispatch(updateEntity(type, data.results, idField));
+                dispatch(entityUpdated(type, data.results, idField));
                 callback(data, dispatch, getState);
             })
             .send(entity)
