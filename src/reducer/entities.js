@@ -2,9 +2,8 @@
  * Created by Andy on 3/27/2017.
  */
 
-import {mergeFlags} from "atp-sugar";
 import {o, a, mergeFlags} from "atp-sugar";
-import rest from "atp-rest";
+import rest from "atp-rest-client";
 import {notEqual} from 'atp-pointfree';
 
 export const UPDATE_ENTITY = "atp-entity/update";
