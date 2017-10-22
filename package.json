@@ -1,5 +1,5 @@
 {
-  "name": "atp-entity",
+  "name": "atp-redux-entity",
   "version": "0.0.0",
   "description": " A module for consistently handling relational data entities via Redux.",
   "main": "src/index.js",
