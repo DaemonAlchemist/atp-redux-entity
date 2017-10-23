@@ -2,7 +2,7 @@
   "name": "atp-redux-entity",
   "version": "0.1.0",
   "description": " A module for consistently handling relational data entities via Redux.",
-  "main": "src/index.js",
+  "main": "lib/index.js",
   "scripts": {
     "test": "npm run compile && mocha --compilers js:babel-core/register",
     "test-quick": "mocha --compilers js:babel-core/register",
