@@ -207,6 +207,14 @@ export const entityBoilerplate = (type, endPoint, idField = "id") => ({
             })
             .send(entity)
             .thunk(),
+        move: (action, targetId, sourceId, callback = () => {}) => rest()
+            .post(endPoint + "/move")
+            .then(([data, dispatch, getState]) => {
+                dispatch(updateEntities(type, data.results, idField));
+                callback(data, dispatch, getState);
+            })
+            .send({action, targetId, sourceId})
+            .thunk(),
         replace: (id, entity, callback = () => {}) => rest()
             .put(endPoint + "/" + id)
             .then(([data, dispatch, getState]) => {
