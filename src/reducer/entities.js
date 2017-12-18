@@ -4,7 +4,7 @@
 
 import {o, a, mergeFlags} from "atp-sugar";
 import rest from "atp-rest-client";
-import {notEqual} from 'atp-pointfree';
+import {notEquals} from 'atp-pointfree';
 
 export const UPDATE_ENTITY = "atp-entity/update";
 export const ENTITY_UPDATED = "atp-entity/updated";
