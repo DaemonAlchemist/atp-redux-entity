@@ -28,9 +28,9 @@
   "license": "MIT",
   "dependencies": {
     "atp-pointfree": "^0.5.1",
-    "atp-rest-client": "^0.1.2",
+    "atp-rest-client": "^0.1.3",
     "atp-sugar": "^0.8.3",
-    "dependency-check": "^2.9.1"
+    "dependency-check": "^2.9.2"
   },
   "devDependencies": {
     "babel-cli": "^6.26.0",
