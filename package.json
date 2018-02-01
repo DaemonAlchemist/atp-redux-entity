@@ -27,10 +27,10 @@
   "author": "Andrew Wittrock",
   "license": "MIT",
   "dependencies": {
-    "atp-pointfree": "^0.5.1",
-    "atp-rest-client": "^0.1.3",
-    "atp-sugar": "^0.8.3",
-    "dependency-check": "^2.9.2"
+    "atp-pointfree": "^0.8.1",
+    "atp-rest-client": "^0.1.4",
+    "atp-sugar": "^0.8.4",
+    "dependency-check": "^3.0.0"
   },
   "devDependencies": {
     "babel-cli": "^6.26.0",
@@ -38,6 +38,6 @@
     "babel-preset-env": "^1.6.1",
     "babel-preset-stage-2": "^6.24.1",
     "chai": "^4.1.2",
-    "mocha": "^4.0.1"
+    "mocha": "^5.0.0"
   }
 }
