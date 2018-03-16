@@ -1,7 +1,7 @@
 
-import {o, a, mergeFlags} from "atp-sugar";
+import {o, a} from "atp-sugar";
 import rest from "atp-rest-client";
-import {notEquals} from 'atp-pointfree';
+import {notEquals, hash, prop, remove, switchOn} from 'atp-pointfree';
 
 export const UPDATE_ENTITY = "atp-entity/update";
 export const ENTITY_UPDATED = "atp-entity/updated";
@@ -15,38 +15,63 @@ export const ENTITY_DELETED = "atp-entity/deleted";
 export const UPDATE_ENTITIES = "atp-entity/update-multiple";
 export const ENTITIES_UPDATED = "atp-entity/updated-multiple";
 
+export const UPDATE_LIST = "atp-entity/update-list";
+
 const _getEntity = (state, type, id) => state[type] && state[type][id] ? state[type][id] : {};
 
-const _updateEntity = (state, type, entity, idField) => o(state).merge({
+const _updateEntity = (state, type, entity, idField) => ({
+    ...state,
     [type]: {
-        [entity[idField]]: o(_getEntity(state, type, entity[idField])).merge(entity, mergeFlags.NONE).raw
+        ...(state[type] || {}),
+        [entity[idField]]: {
+            ..._getEntity(state, type, entity[idField]),
+            ...entity
+        }
     }
-}, mergeFlags.RECURSIVE).raw;
+});
 
-const _addChild = (state, entityType, entityId, childType, childId) => o(state).merge({
+const _addChild = (state, entityType, entityId, childType, childId) => ({
+    ...state,
     [entityType]: {
-        [entityId]: o(_getEntity(state, entityType, entityId)).as(entity => o(entity).merge({
-            [childType]: (entity[childType] || []).concat(childId)
-        }, mergeFlags.NONE)).raw
+        ...state[entityType],
+        [entityId]: {
+            ..._getEntity(state, entityType, entityId),
+            [childType]: (_getEntity(state, entityType, entityId)[childType] || []).concat(childId)
+        }
     }
-}, mergeFlags.RECURSIVE).raw;
+});
 
-const _removeChild = (state, entityType, entityId, childType, childId) => o(state).merge({
+const _removeChild = (state, entityType, entityId, childType, childId) => ({
+    ...state,
     [entityType]: {
-        [entityId]: o(_getEntity(state, entityType, entityId)).as(entity => o(entity).merge({
-            [childType]: (entity[childType] || []).filter(notEquals(childId))
-        }, mergeFlags.NONE)).raw
+        ...state[entityType],
+        [entityId]: {
+            ..._getEntity(state, entityType, entityId),
+            [childType]: (_getEntity(state, entityType, entityId)[childType] || []).filter(notEquals(childId))
+        }
     }
-}, mergeFlags.RECURSIVE).raw;
+});
 
 const _updateEntities = (state, type, entities, idField) => entities.reduce(
     (combined, entity) => _updateEntity(combined, type, entity, idField),
     state
 );
 
-const _deleteEntity = (state, type, id, idField) => o(state).merge({
-    [type]: o(state[type]).filter(obj => obj[idField] !== id).raw
-}, null).raw;
+const _updateList = (state, type, filters, entities, idField) => ({
+    ...state,
+    __lists: {
+        ...(state.__lists || {}),
+        [type]: {
+            ...(state.__lists[type] || {}),
+            [hash(filters)]: entities.map(prop(idField))
+        }
+    }
+});
+
+const _deleteEntity = (state, type, id, idField) => ({
+    ...state,
+    [type]: remove(id)(state[type])
+});
 
 const _getChangedEntityIdList = (getState, type, results, idField) => {
     return [].concat(
@@ -62,16 +87,18 @@ const _getChangedEntityIdList = (getState, type, results, idField) => {
 
 //Initial state
 const initialState = {
+    __lists: {}
 };
 
 //Reducer
 export default (state = initialState, action) =>
-    o(action.type).switch({
+    switchOn(action.type, {
         [UPDATE_ENTITY]:      () => _updateEntity(state, action.entityType, action.entity, action.idField),
         [ADD_CHILD]:          () => _addChild(state, action.entityType, action.entityId, action.childType, action.childId),
         [REMOVE_CHILD]:       () => _removeChild(state, action.entityType, action.entityId, action.childType, action.childId),
         [DELETE_ENTITY]:      () => _deleteEntity(state, action.entityType, action.id, action.idField),
         [UPDATE_ENTITIES]:    () => _updateEntities(state, action.entityType, action.entities, action.idField),
+        [UPDATE_LIST]:        () => _updateList(state, action.entityType, action.filters, action.entities, action.idField),
         default: () => state
     });
 
@@ -83,6 +110,7 @@ export const getEntity = (getState, type, id) =>
         : undefined;
 export const getAllEntities = (getState, type) => getState().entities[type] || {};
 export const getEntitiesById = (getState, type, idList) => idList.map(id => getEntity(getState, type, id));
+export const getEntitiesByList = (getState, type, filters) => ((getState().entities.__lists[type] || {})[hash(filters)] || []).map(id => getEntity(getState, type, id));
 
 //Action creators
 export const updateEntity = (entityType, entity, idField) => ({type: UPDATE_ENTITY, entityType, idField, entity});
@@ -97,6 +125,8 @@ export const entityDeleted = (entityType, id, idField) => ({type: ENTITY_DELETED
 export const updateEntities = (entityType, entities, idField) => ({type: UPDATE_ENTITIES, entityType, idField, entities});
 export const entitiesUpdated = (entityType, entities, idField) => ({type: ENTITIES_UPDATED, entityType, idField, entities});
 
+export const updateList = (entityType, filters, entities, idField) => ({type: UPDATE_LIST, entityType, filters, idField, entities});
+
 //Boilerplate
 export const entityBoilerplate = (type, endPoint, idField = "id") => ({
     children: (childEndPoint, model) => {
@@ -110,7 +140,7 @@ export const entityBoilerplate = (type, endPoint, idField = "id") => ({
             action: {
                 list: (id, filters) => rest()
                     .get(childrenUrl(id))
-                    .send(o(filters).delete('columns').raw)
+                    .send(remove('columns')(filters))
                     .then(([data, dispatch, getState]) => {
                         dispatch(updateEntity(type, {
                             [idField]: id,
@@ -142,6 +172,7 @@ export const entityBoilerplate = (type, endPoint, idField = "id") => ({
             .values()
             .filter(filter),
         byIdList: (getState, idList) => getEntitiesById(getState, type, idList),
+        byList: (getState, filters) => getEntitiesByList(getState, type, filters)
     },
     action: {
         type: {
@@ -173,18 +204,21 @@ export const entityBoilerplate = (type, endPoint, idField = "id") => ({
             },
             getVersions: (filters = {}) => rest()
                 .get(endPoint)
-                .send(o(filters).merge({
+                .send({
+                    ...filters,
                     columns: ['id', 'version'].join(',')
-                }).raw)
+                })
                 .then(([data, dispatch, getState]) => {
                     dispatch(updateEntities(type, data.results, idField));
                 })
                 .thunk(),
-            get: (filters = {}) => rest()
+            get: (filters = {}, callback = () => {}) => rest()
                 .get(endPoint)
                 .send(filters)
                 .then(([data, dispatch, getState]) => {
                     dispatch(updateEntities(type, data.results, idField));
+                    dispatch(updateList(type, filters, data.results, idField));
+                    callback(data);
                 })
                 .thunk(),
         },
