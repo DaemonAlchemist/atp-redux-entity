@@ -1,7 +1,7 @@
 
 import {o, a} from "atp-sugar";
 import rest from "atp-rest-client";
-import {notEquals, hash, prop, remove, switchOn} from 'atp-pointfree';
+import {notEquals, hash, prop, remove, switchOn, filter, identity, debug} from 'atp-pointfree';
 
 export const UPDATE_ENTITY = "atp-entity/update";
 export const ENTITY_UPDATED = "atp-entity/updated";
@@ -63,7 +63,7 @@ const _updateList = (state, type, filters, entities, idField) => ({
         ...(state.__lists || {}),
         [type]: {
             ...(state.__lists[type] || {}),
-            [hash(filters)]: entities.map(prop(idField))
+            [hash(filter(identity)(filters))]: entities.map(prop(idField))
         }
     }
 });
@@ -110,7 +110,7 @@ export const getEntity = (getState, type, id) =>
         : undefined;
 export const getAllEntities = (getState, type) => getState().entities[type] || {};
 export const getEntitiesById = (getState, type, idList) => idList.map(id => getEntity(getState, type, id));
-export const getEntitiesByList = (getState, type, filters) => ((getState().entities.__lists[type] || {})[hash(filters)] || []).map(id => getEntity(getState, type, id));
+export const getEntitiesByList = (getState, type, filters) => ((getState().entities.__lists[type] || {})[hash(filter(identity)(filters))] || []).map(id => getEntity(getState, type, id));
 
 //Action creators
 export const updateEntity = (entityType, entity, idField) => ({type: UPDATE_ENTITY, entityType, idField, entity});
@@ -214,7 +214,7 @@ export const entityBoilerplate = (type, endPoint, idField = "id") => ({
                 .thunk(),
             get: (filters = {}, callback = () => {}) => rest()
                 .get(endPoint)
-                .send(filters)
+                .send(filter(identity)(filters))
                 .then(([data, dispatch, getState]) => {
                     dispatch(updateEntities(type, data.results, idField));
                     dispatch(updateList(type, filters, data.results, idField));
