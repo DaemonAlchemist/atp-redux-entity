@@ -24,7 +24,7 @@
     "type": "git",
     "url": "https://github.com/DaemonAlchemist/atp-redux-entity.git"
   },
-  "author": "Andrew Wittrock",
+  "author": "DaemonAlchemist",
   "license": "MIT",
   "dependencies": {
     "atp-pointfree": "^0.11.3",
